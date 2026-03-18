@@ -574,6 +574,21 @@
       font-size: 13px;
       margin-bottom: 8px;
     }
+  
+    #back-to-main {
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.35);
+      color: #fff;
+      padding: 7px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      text-decoration: none;
+      transition: background 0.2s;
+      display: inline-block;
+      margin-top: 6px;
+    }
+    #back-to-main:hover { background: rgba(255,255,255,0.25); }
   </style>
 </head>
 <body>
@@ -597,6 +612,7 @@
       <div id="last-refresh" style="font-size: 12px; font-weight: 600;">—</div>
     </div>
     <button id="refresh-btn" onclick="loadDashboard()">Refresh</button>
+    <a id="back-to-main" href="https://reporting.flowintel.co.uk">← Back to Main</a>
   </div>
 </header>
 
