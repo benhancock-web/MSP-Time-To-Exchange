@@ -702,9 +702,9 @@
       <div class="summary-card-value" id="count-included">—</div>
     </div>
     <div class="summary-card accent-amber">
-      <div class="summary-card-title">Properties Excluded</div>
+      <div class="summary-card-title">Missing Dates</div>
       <div class="info-icon">i</div>
-      <div class="info-tooltip">Properties that are missing either a MOS Sent date or an Exchange Date (so the time to exchange cannot be calculated), plus properties with valid dates but an Exchange Date outside the selected year.</div>
+      <div class="info-tooltip">Properties in Exchanged or Completed groups that are missing either a MOS Sent date or an Exchange Date. These properties should have both dates but don't — a data quality issue that needs attention.</div>
       <div class="summary-card-value" id="count-excluded">—</div>
     </div>
   </div>
@@ -940,13 +940,19 @@
     return Math.round(diffMs / (1000 * 60 * 60 * 24));
   }
 
+  function isExchangedOrCompleted(spStatus) {
+    if (!spStatus) return false;
+    const lower = spStatus.toLowerCase();
+    return lower.includes('exchang') || lower.includes('complet');
+  }
+
   function processExchangeData(items, selectedYear, groupByProg) {
     const data = {}; // { progressor/agent: { daysArray, count, included, excluded } }
     let totalIncluded = 0;
     let totalExcluded = 0;
 
     for (const { item, colMap, boardName } of items) {
-      const { owner, exchangeDate, mosSentDate } = extractItemData(item, colMap, boardName);
+      const { owner, exchangeDate, mosSentDate, spStatus } = extractItemData(item, colMap, boardName);
 
       // Determine grouping key
       let groupKey;
@@ -964,11 +970,17 @@
       const hasBothDates = mosSentDate && exchangeDate;
 
       if (!hasBothDates) {
-        totalExcluded++;
+        // Only count as "excluded" if the property is in an Exchanged/Completed group
+        // (i.e. it SHOULD have dates but doesn't — a data quality issue)
+        if (isExchangedOrCompleted(spStatus)) {
+          totalExcluded++;
+        }
       } else {
         const days = calculateDaysBetween(mosSentDate, exchangeDate);
         if (days === null) {
-          totalExcluded++;
+          if (isExchangedOrCompleted(spStatus)) {
+            totalExcluded++;
+          }
         } else {
           totalIncluded++;
           // For By Progressor: each owner gets the same days value
@@ -1325,16 +1337,22 @@
       for (const value of Object.values(filteredData)) {
         // Count is already correct per group, but we need unique items across groups
       }
-      // Simpler: recount from all items directly
+      // Recount from all items directly — excluded only counts exchanged/completed items missing dates
       let trueIncluded = 0;
       let trueExcluded = 0;
       for (const entry of items) {
-        const { exchangeDate, mosSentDate } = extractItemData(entry.item, entry.colMap, entry.boardName);
-        if (!mosSentDate || !exchangeDate) { trueExcluded++; continue; }
+        const { exchangeDate, mosSentDate, spStatus } = extractItemData(entry.item, entry.colMap, entry.boardName);
+        if (!mosSentDate || !exchangeDate) {
+          if (isExchangedOrCompleted(spStatus)) trueExcluded++;
+          continue;
+        }
         const days = calculateDaysBetween(mosSentDate, exchangeDate);
-        if (days === null) { trueExcluded++; continue; }
+        if (days === null) {
+          if (isExchangedOrCompleted(spStatus)) trueExcluded++;
+          continue;
+        }
         const [y] = exchangeDate.split('-');
-        if (parseInt(y) === selectedYear) { trueIncluded++; } else { trueExcluded++; }
+        if (parseInt(y) === selectedYear) { trueIncluded++; }
       }
       filteredIncluded = trueIncluded;
       filteredExcluded = trueExcluded;
