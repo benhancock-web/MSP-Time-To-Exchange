@@ -914,10 +914,11 @@
           // For By Progressor: each owner gets the same days value
           for (const key of groupKey) {
             if (!data[key]) {
-              data[key] = { days: [], count: 0, daysValues: [] };
+              data[key] = { days: [], count: 0, daysValues: [], items: [] };
             }
             data[key].days.push(days);
             data[key].daysValues.push(days);
+            data[key].items.push({ item, colMap, boardName });
             data[key].count++;
           }
         }
@@ -1237,20 +1238,46 @@
 
     // Filter by year if selected
     let filteredData = {};
+    let filteredIncluded = totalIncluded;
+    let filteredExcluded = totalExcluded;
     if (selectedYear) {
+      filteredIncluded = 0;
       for (const [key, value] of Object.entries(data)) {
-        const filtered = value.days.filter((_, idx) => {
-          const item = items[idx];
-          if (!item) return false;
-          const { exchangeDate } = extractItemData(item.item, item.colMap, item.boardName);
-          if (!exchangeDate) return false;
+        const filtered = [];
+        for (let i = 0; i < value.days.length; i++) {
+          const ref = value.items[i];
+          if (!ref) continue;
+          const { exchangeDate } = extractItemData(ref.item, ref.colMap, ref.boardName);
+          if (!exchangeDate) continue;
           const [y] = exchangeDate.split('-');
-          return parseInt(y) === selectedYear;
-        });
+          if (parseInt(y) === selectedYear) {
+            filtered.push(value.days[i]);
+          }
+        }
         if (filtered.length > 0) {
           filteredData[key] = { days: filtered, count: filtered.length, daysValues: filtered };
         }
+        filteredIncluded += filtered.length;
       }
+      // When grouping by progressor, dual-owner items are counted once per owner in filteredIncluded
+      // We need the true property count: use a Set of unique items
+      const uniqueIncluded = new Set();
+      for (const value of Object.values(filteredData)) {
+        // Count is already correct per group, but we need unique items across groups
+      }
+      // Simpler: recount from all items directly
+      let trueIncluded = 0;
+      let trueExcluded = 0;
+      for (const entry of items) {
+        const { exchangeDate, mosSentDate } = extractItemData(entry.item, entry.colMap, entry.boardName);
+        if (!mosSentDate || !exchangeDate) { trueExcluded++; continue; }
+        const days = calculateDaysBetween(mosSentDate, exchangeDate);
+        if (days === null) { trueExcluded++; continue; }
+        const [y] = exchangeDate.split('-');
+        if (parseInt(y) === selectedYear) { trueIncluded++; } else { trueExcluded++; }
+      }
+      filteredIncluded = trueIncluded;
+      filteredExcluded = trueExcluded;
     } else {
       filteredData = data;
     }
@@ -1260,7 +1287,7 @@
         Object.values(filteredData).reduce((sum, item) => sum + item.days.length, 0)
       : 0;
 
-    renderSummaryWidgets(totalIncluded, totalExcluded, avgDays);
+    renderSummaryWidgets(filteredIncluded, filteredExcluded, avgDays);
     renderBreakdownTable(filteredData, selectedYear);
     renderBarChart(filteredData);
   }
