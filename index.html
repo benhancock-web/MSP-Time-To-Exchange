@@ -299,6 +299,58 @@
       color: #fdab3d;
     }
 
+    .summary-card {
+      position: relative;
+    }
+
+    .info-icon {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #e8ecf0;
+      color: #888;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: help;
+      font-style: italic;
+      font-family: Georgia, serif;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .info-icon:hover {
+      background: #0C3C60;
+      color: #fff;
+    }
+
+    .info-tooltip {
+      display: none;
+      position: absolute;
+      top: 36px;
+      right: 0;
+      background: #1a2744;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1.5;
+      padding: 10px 14px;
+      border-radius: 8px;
+      width: 280px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      z-index: 100;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+
+    .info-icon:hover + .info-tooltip {
+      display: block;
+    }
+
     /* Filter controls (Year + Toggle) */
     .filter-controls {
       background: #fff;
@@ -637,14 +689,20 @@
   <div class="summary-widgets">
     <div class="summary-card">
       <div class="summary-card-title">Average Days to Exchange</div>
+      <div class="info-icon">i</div>
+      <div class="info-tooltip">The average number of days between MOS Sent and Exchange Date, calculated across all included properties. Each property is counted once regardless of how many progressors are assigned.</div>
       <div class="summary-card-value" id="avg-days">—</div>
     </div>
     <div class="summary-card accent-green">
       <div class="summary-card-title">Properties Included</div>
+      <div class="info-icon">i</div>
+      <div class="info-tooltip">Properties that have both a MOS Sent date and an Exchange Date, with the Exchange Date falling in the selected year. These properties are used to calculate the average and populate the table and chart below.</div>
       <div class="summary-card-value" id="count-included">—</div>
     </div>
     <div class="summary-card accent-amber">
       <div class="summary-card-title">Properties Excluded</div>
+      <div class="info-icon">i</div>
+      <div class="info-tooltip">Properties that are missing either a MOS Sent date or an Exchange Date (so the time to exchange cannot be calculated), plus properties with valid dates but an Exchange Date outside the selected year.</div>
       <div class="summary-card-value" id="count-excluded">—</div>
     </div>
   </div>
@@ -1282,10 +1340,22 @@
       filteredData = data;
     }
 
-    const avgDays = filteredData && Object.keys(filteredData).length > 0
-      ? Object.values(filteredData).reduce((sum, item) => sum + item.days.reduce((a, b) => a + b, 0), 0) /
-        Object.values(filteredData).reduce((sum, item) => sum + item.days.length, 0)
-      : 0;
+    // Calculate average from raw items (each property counted once, regardless of grouping)
+    let totalDaysSum = 0;
+    let totalDaysCount = 0;
+    for (const entry of items) {
+      const { exchangeDate, mosSentDate } = extractItemData(entry.item, entry.colMap, entry.boardName);
+      if (!mosSentDate || !exchangeDate) continue;
+      const days = calculateDaysBetween(mosSentDate, exchangeDate);
+      if (days === null) continue;
+      if (selectedYear) {
+        const [y] = exchangeDate.split('-');
+        if (parseInt(y) !== selectedYear) continue;
+      }
+      totalDaysSum += days;
+      totalDaysCount++;
+    }
+    const avgDays = totalDaysCount > 0 ? Math.round(totalDaysSum / totalDaysCount) : 0;
 
     renderSummaryWidgets(filteredIncluded, filteredExcluded, avgDays);
     renderBreakdownTable(filteredData, selectedYear);
