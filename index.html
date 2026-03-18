@@ -659,7 +659,7 @@
     </div>
     <div class="toggle-container">
       <span class="toggle-label active" id="progressor-label">By Progressor</span>
-      <div class="toggle-switch active" id="toggle-switch" onclick="toggleGroupBy()"></div>
+      <div class="toggle-switch" id="toggle-switch" onclick="toggleGroupBy()"></div>
       <span class="toggle-label" id="agent-label">By Agent</span>
     </div>
   </div>
@@ -860,7 +860,7 @@
         if (text) owner = text;
       } else if (colTitle === 'exchange date') {
         exchangeDate = text;
-      } else if (colTitle === 'mos sent to msp') {
+      } else if (colTitle.includes('mos') && !mosSentDate) {
         mosSentDate = text;
       }
     }
@@ -1025,7 +1025,7 @@
     const agentLabel = document.getElementById('agent-label');
 
     if (groupByProgressor) {
-      toggle.classList.add('active');
+      toggle.classList.remove('active');
       progLabel.classList.add('active');
       agentLabel.classList.remove('active');
       document.getElementById('table-title').textContent = 'Time to Exchange by Sales Progressor';
@@ -1033,7 +1033,7 @@
       document.getElementById('table-subtitle').textContent = 'Average days from MOS Sent to Exchange Date';
       document.getElementById('chart-subtitle').textContent = 'Faster conversions on the left';
     } else {
-      toggle.classList.remove('active');
+      toggle.classList.add('active');
       progLabel.classList.remove('active');
       agentLabel.classList.add('active');
       document.getElementById('table-title').textContent = 'Time to Exchange by Estate Agent';
