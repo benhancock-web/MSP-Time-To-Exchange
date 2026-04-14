@@ -910,7 +910,13 @@
       const text = (cv.text || '').trim();
 
       if (colTitle === 'owner' || colTitle === 'person') {
-        if (text) owner = text;
+        // Effective owner = LAST person in the owners list. Single owner (98%
+        // case) collapses to current behaviour. When 2+ owners, last wins.
+        // See DECISION-LOG 14 April 2026.
+        if (text) {
+          const _ow = text.split(',').map(s => s.trim()).filter(Boolean);
+          if (_ow.length) owner = _ow[_ow.length - 1];
+        }
       } else if (colTitle === 'exchange date') {
         exchangeDate = text;
       } else if (colTitle.includes('mos') && !mosSentDate) {
@@ -950,10 +956,10 @@
       // Determine grouping key
       let groupKey;
       if (groupByProg) {
-        // By Progressor: split dual owners
-        const owners = owner.split(',').map(o => o.trim()).filter(o => o);
-        if (owners.length === 0) owners.push('(Unknown)');
-        groupKey = owners;
+        // By Progressor: attribute to the LAST owner only (no split for dual
+        // owners). `owner` has already been normalised in extractItemData.
+        // See DECISION-LOG 14 April 2026.
+        groupKey = [owner || '(Unknown)'];
       } else {
         // By Agent: use board name
         groupKey = [boardName || '(Unknown Board)'];
